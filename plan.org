@@ -1,0 +1,26 @@
+* App
+** parsers
+*** megaparsec
+** tests
+*** tasty
+** CLI
+*** optparse-applicative (generic?)
+#+BEGIN_SRC bash
+$ ls *.txt | lhx -e "mv %f %fne" | sh
+#+END_SRC
+** TUI
+*** brick
+** WebUI
+*** threepennygui
+*** scotty
+** embedded Lua
+*** hslua
+* Infra
+** Nix
+** Docker
+** CI on different OSes
+* Template language
+#+BEGIN_SRC text
+: ts = %time{YY-MM-DD}
+mv %f %i{03}-%fne-%ts
+#+END_SRC
