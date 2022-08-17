@@ -1,20 +1,13 @@
 * App
-** parsers
-*** megaparsec
-** tests
-*** tasty
-** CLI
-*** optparse-applicative (generic?)
-#+BEGIN_SRC bash
-$ ls *.txt | lhx -e "mv %f %fne" | sh
-#+END_SRC
-** TUI
-*** brick
-** WebUI
-*** threepennygui
-*** scotty
-** embedded Lua
-*** hslua
+| Subsystem     | Library                         |
+|---------------+---------------------------------|
+| Parsers       | megaparsec                      |
+| Tests         | tasty                           |
+| CLI           | optparse-applicative (generic?) |
+| TUI           | brick                           |
+| Web-based GUI | threepennygui                   |
+| WebApp        | scotty                          |
+| embedded Lua  | hslua                           |
 * Infra
 ** Nix
 ** Docker
