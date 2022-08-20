@@ -8,6 +8,9 @@
 | Web-based GUI | threepennygui                   |
 | WebApp        | scotty                          |
 | embedded Lua  | hslua                           |
+* CLI
+** ~-e EXPR~
+** ~-i LIB~
 * Infra
 ** Nix
 ** Docker
@@ -17,3 +20,6 @@
 : ts = %time{YY-MM-DD}
 mv %f %i{03}-%fne-%ts
 #+END_SRC
+** awk(1)
+*** ~@include~
+*** ~$0~, ~$1~…

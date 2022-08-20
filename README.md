@@ -7,4 +7,4 @@ The LHX is dual:
 
 ## Idea
 
-The central idea is to make possible to transform some text line-by-line using a simple templating language: rename a group of files, generate HTML lists and tables, etc.OOII
+The central idea is to make possible to transform some text line-by-line using a simple templating language: rename a group of files, generate HTML lists and tables, etc.
