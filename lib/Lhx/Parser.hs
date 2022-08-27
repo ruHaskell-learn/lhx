@@ -11,7 +11,6 @@ import Text.Megaparsec hiding (parse)
 import Text.Megaparsec qualified as MP
 import Text.Megaparsec.Char
 import Text.Megaparsec.Char.Lexer (decimal)
-import Text.Megaparsec.Error (errorBundlePretty)
 
 newtype FName = FName { unFName :: Text } deriving (Show, Eq)
 
