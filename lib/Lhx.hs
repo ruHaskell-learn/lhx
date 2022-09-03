@@ -1,8 +1,10 @@
 module Lhx where
 
 import Control.Monad
+import Data.Either
+import Data.Function ((&))
 import Data.Bifunctor
-import Data.Text as T
+import Data.Text as T hiding (map)
 
 import Lhx.Parser
 
@@ -36,19 +38,29 @@ functions =
   , (FName "rstrip", Right . T.stripEnd)
   ]
 
+lookupFunction :: FName -> Either Error (Text -> Either Error Text)
+lookupFunction n =
+  maybe (Left $ Error $ "Unknown function: " <> unFName n) Right
+  $ lookup n functions
+
 buildTemplate :: [Chunk] -> Either [Error] Template
 buildTemplate = repack . foldMap wrap
   where
     repack (cs, []) = Right cs
     repack (_,  es) = Left es
     wrap (Raw t) = ok (Right . pure t)
-    wrap (Apply ix Nothing) = ok (at ix)
-    wrap (Apply ix (Just n)) =
-      case lookup n functions of
-        Nothing -> oops $ Error $ "Unknown function: " <> unFName n
-        Just f  -> ok (f <=< at ix)
+    wrap (Apply ix ns) =
+      either oops ok $
+      fmap (\f i -> at ix i >>= f) (makeOp ns)
     ok   x = ([x], [])
-    oops x = ([], [x])
+    oops x = ([], x)
+
+    makeOp :: [FName] -> Either [Error] (Text -> Either Error Text)
+    makeOp ns =
+      let fs = map lookupFunction ns
+      in case lefts fs of
+        [] -> Right $ foldM (&) `flip` rights fs
+        es -> Left es
 
 makeTemplate :: Text -> Either [Error] Template
 makeTemplate = buildTemplate <=< first wrap . parse

@@ -16,7 +16,7 @@ newtype FName = FName { unFName :: Text } deriving (Show, Eq)
 
 data Chunk
   = Raw Text
-  | Apply Int (Maybe FName)
+  | Apply Int [FName]
   deriving Show
 
 type Parser a = Parsec Void Text a
@@ -27,25 +27,36 @@ parse =
   . MP.parse templateP ""
 
 templateP :: Parser [Chunk]
-templateP = many tokenP
+templateP = Prelude.concat <$> many tokenP
 
-tokenP :: Parser Chunk
+tokenP :: Parser [Chunk]
 tokenP =
   applyP
-  <|> Raw . T.pack <$> some (satisfy (/= '$'))
+  <|> (:[]) <$> rawP
 
-applyP :: Parser Chunk
+rawP :: Parser Chunk
+rawP = Raw . T.pack <$> some (satisfy (/= '$'))
+
+applyP :: Parser [Chunk]
 applyP =
-  char '$' *> (
-    -- $0:foo
-    try (Apply <$> (decimal <* char ':') <*> (Just . FName <$> identP))
-    <|>
-    -- $0
-    (Apply <$> decimal <*> pure Nothing)
-    <|>
-    -- $foo
-    (Apply 0 . Just . FName <$> identP)
-  )
+  char '$' *> do
+    app <- applyP'
+    r <- optional rawP
+    case r of
+      Just (Raw t)
+        | T.take 1 t == ":" -> fail "Expected ;"
+        | otherwise -> pure [app, Raw t]
+      _ -> pure [app]
+  where
+    applyP' =
+      (Apply
+        <$> decimal
+        <*> (try (char ':' *> namesP) <|> pure []))
+      <|>
+      (Apply 0 <$> namesP)
+
+namesP :: Parser [FName]
+namesP = (fmap FName identP `sepBy1` char ':') <* char ';'
 
 identP :: Parser Text
 identP =
