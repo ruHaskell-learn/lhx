@@ -31,7 +31,8 @@ templateP = Prelude.concat <$> many tokenP
 
 tokenP :: Parser [Chunk]
 tokenP =
-  applyP
+  try escapeP
+  <|> applyP
   <|> (:[]) <$> rawP
 
 rawP :: Parser Chunk
@@ -63,3 +64,6 @@ identP =
   cons
   <$> lowerChar
   <*> (T.pack <$> many (lowerChar <|> digitChar))
+
+escapeP :: Parser [Chunk]
+escapeP = char '$' *> char '$' *> pure [Raw "$"]
