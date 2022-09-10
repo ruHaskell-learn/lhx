@@ -16,8 +16,10 @@ common defaults
     default-language:   Haskell2010
     build-depends:      base ^>=4.14.3.0
     default-extensions:
+        BlockArguments
         ImportQualifiedPost
         OverloadedStrings
+        TupleSections
 
     ghc-options:
         -Wall -Wcompat -Wincomplete-record-updates
@@ -42,6 +44,15 @@ executable lhx
     build-depends:  lhx
                   , text
                   , optparse-applicative
+
+executable lhx-tpgui
+    import:         defaults
+    hs-source-dirs: app-tpgui
+    main-is:        Main.hs
+    ghc-options:    -threaded
+    build-depends:  lhx
+                  , text
+                  , threepenny-gui
 
 test-suite lhx-test
     import:         defaults
