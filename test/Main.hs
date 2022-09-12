@@ -9,6 +9,6 @@ main =
   defaultMain $
     testGroup
       "Lhx tests"
-      [ TestParser.tests,
-        TestTemplate.tests
+      [ TestParser.tests
+      , TestTemplate.tests
       ]

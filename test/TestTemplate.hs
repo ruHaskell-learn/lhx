@@ -19,18 +19,18 @@ makeTemplateTests =
     "make template"
     [ testGroup
         "fail"
-        [ testCase "parse errors remain" $ isLeft (L.makeTemplate "$foo") @? "parsing error should remain",
-          testCase "unknown function" $ isLeft (L.makeTemplate "$foo;") @? "function isn't in the list functions",
-          testCase "all unknown functions must be caught" $
+        [ testCase "parse errors remain" $ isLeft (L.makeTemplate "$foo") @? "parsing error should remain"
+        , testCase "unknown function" $ isLeft (L.makeTemplate "$foo;") @? "function isn't in the list functions"
+        , testCase "all unknown functions must be caught" $
             leftToMaybe (L.makeTemplate "$foo:bar:rev:baz:strip:lstrip:bazzz;")
               @?= Just
-                [ L.Error "Unknown function: foo",
-                  L.Error "Unknown function: bar",
-                  L.Error "Unknown function: baz",
-                  L.Error "Unknown function: bazzz"
+                [ L.Error "Unknown function: foo"
+                , L.Error "Unknown function: bar"
+                , L.Error "Unknown function: baz"
+                , L.Error "Unknown function: bazzz"
                 ]
-        ],
-      testGroup
+        ]
+    , testGroup
         "right"
         [ testCase "all good functions" $
             isRight (L.makeTemplate "$rev:strip:lstrip:rstrip;")
@@ -55,29 +55,29 @@ createTestPropertiesFunction functions =
 applyTemplateTests :: TestTree
 applyTemplateTests =
   createTestPropertiesFunction
-    [ ("rev", ' ', T.reverse),
-      ("strip", ',', T.strip),
-      ("lstrip", ',', T.stripStart),
-      ("rstrip", ',', T.stripEnd),
-      ("rev:rev", ' ', id),
-      ("lstrip:rev", ',', T.reverse . T.stripStart)
+    [ ("rev", ' ', T.reverse)
+    , ("strip", ',', T.strip)
+    , ("lstrip", ',', T.stripStart)
+    , ("rstrip", ',', T.stripEnd)
+    , ("rev:rev", ' ', id)
+    , ("lstrip:rev", ',', T.reverse . T.stripStart)
     ]
 
 applyTemplateWithIndexes :: TestTree
 applyTemplateWithIndexes =
   testGroup
     "indexes"
-    [ 
-      -- testCase "" $ assertEqual "$1 $0" (Right "b a") $ do 
-      --   template <- L.makeTemplate "$1 $0"
-      --   L.apply template (L.makeInput (Separator ",") "a,b")
-    ]
+    []
+
+-- testCase "" $ assertEqual "$1 $0" (Right "b a") $ do
+--   template <- L.makeTemplate "$1 $0"
+--   L.apply template (L.makeInput (Separator ",") "a,b")
 
 tests :: TestTree
 tests =
   testGroup
     "Template tests"
-    [ makeTemplateTests,
-      applyTemplateTests,
-      applyTemplateWithIndexes
+    [ makeTemplateTests
+    , applyTemplateTests
+    , applyTemplateWithIndexes
     ]
