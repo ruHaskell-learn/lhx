@@ -41,10 +41,12 @@ parseFunctionTests =
 -- testNameFunctionProperty :: TestTree
 -- testNameFunctionProperty =
 --   QC.testProperty "name function property" $
---     \name -> nameProperty name QC.==> LP.parse (T.pack $ '$' : (name <> ";")) == Right [LP.Apply 0 [LP.FName (T.pack name)]]
+--     \name -> nameProperty name QC.==> LP.parse ("$" <> name <> ";") == Right [LP.Apply 0 [LP.FName name]]
 --   where
---     nameProperty [] = False
---     nameProperty (c : cs) = isLower c && Prelude.all (liftA2 (||) isLower isDigit) cs
+--     nameProperty name =
+--       not (T.null name)
+--         && isLower (T.head name)
+--         && T.all (liftA2 (||) isLower isDigit) (T.tail name)
 
 parseRawTests :: TestTree
 parseRawTests =

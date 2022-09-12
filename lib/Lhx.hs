@@ -8,7 +8,7 @@ import Data.Text as T hiding (map)
 
 import Lhx.Parser
 
-newtype Error = Error { getError :: Text } deriving Show
+newtype Error = Error { getError :: Text } deriving (Show, Eq)
 newtype Separator = Separator { unSeparator :: Text } deriving (Show)
 
 type Template = [Op]
