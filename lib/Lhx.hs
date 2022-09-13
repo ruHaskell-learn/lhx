@@ -17,7 +17,7 @@ type Op = (Input -> Either Error Text)
 data Input = Input
   { iRaw    :: !Text
   , iFields :: [Text]
-  } deriving Show
+  } deriving (Show, Eq)
 
 apply :: Template -> Input -> Either [Error] Text
 apply tpl = repack . foldMap wrap . sequenceA tpl
