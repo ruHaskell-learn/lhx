@@ -13,11 +13,7 @@ type MessageIfFail = String
 
 type ParsedString = T.Text
 
-type ParsedTestCase = (ParsedString, [LP.Chunk])
-
-type FailParsedTestCase = (ParsedString, MessageIfFail)
-
-makeParsedTestCaseTestTrees :: Title -> [ParsedTestCase] -> TestTree
+makeParsedTestCaseTestTrees :: Title -> [(ParsedString, [LP.Chunk])] -> TestTree
 makeParsedTestCaseTestTrees title cases =
   testGroup title $
     Prelude.map
@@ -73,7 +69,7 @@ rightCases =
     , parseFunctionsAndRawsTests
     ]
 
-makeCasesWithFailParseTest :: [FailParsedTestCase] -> TestTree
+makeCasesWithFailParseTest :: [(ParsedString, MessageIfFail)] -> TestTree
 makeCasesWithFailParseTest cases =
   testGroup "fail" $
     Prelude.map
