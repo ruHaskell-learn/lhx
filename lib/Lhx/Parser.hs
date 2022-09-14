@@ -17,7 +17,7 @@ newtype FName = FName { unFName :: Text } deriving (Show, Eq)
 data Chunk
   = Raw Text
   | Apply Int [FName]
-  deriving Show
+  deriving (Show, Eq)
 
 type Parser a = Parsec Void Text a
 

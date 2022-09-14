@@ -8,7 +8,7 @@ import Data.Text as T hiding (map)
 
 import Lhx.Parser
 
-newtype Error = Error { getError :: Text } deriving Show
+newtype Error = Error { getError :: Text } deriving (Show, Eq)
 newtype Separator = Separator { unSeparator :: Text } deriving (Show)
 
 type Template = [Op]
@@ -17,7 +17,7 @@ type Op = (Input -> Either Error Text)
 data Input = Input
   { iRaw    :: !Text
   , iFields :: [Text]
-  } deriving Show
+  } deriving (Show, Eq)
 
 apply :: Template -> Input -> Either [Error] Text
 apply tpl = repack . foldMap wrap . sequenceA tpl
