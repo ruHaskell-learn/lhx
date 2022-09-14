@@ -10,7 +10,7 @@ import Data.Text as T
 import Text.Megaparsec hiding (parse)
 import Text.Megaparsec qualified as MP
 import Text.Megaparsec.Char
-import Text.Megaparsec.Char.Lexer (decimal)
+import Text.Megaparsec.Char.Lexer (signed, decimal)
 
 newtype FName = FName { unFName :: Text } deriving (Show, Eq)
 
@@ -51,7 +51,7 @@ applyP =
   where
     applyP' =
       (Apply
-        <$> decimal
+        <$> signed (pure ()) decimal
         <*> (try (char ':' *> namesP) <|> pure []))
       <|>
       (Apply 0 <$> namesP)

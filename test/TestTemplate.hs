@@ -74,6 +74,16 @@ indexingTests =
         "$2,$1" `appliedTo` "a,b" @?= Right "b,a"
     , testCase "Functions should work well with indices" $
         "$2:rev:rev;,$1:rev;" `appliedTo` "abc,de" @?= Right "de,cba"
+    , testCase "index out of range" $
+        "$20" `appliedTo` "a,b,c" @?= Left [Lhx.Error "Index is out of range: 20"]
+    , testCase "negate index -1" $
+        "$-1" `appliedTo` "a,b,c,d,e,f" @?= Right "f"
+    , testCase "negate index -3" $
+        "$-3" `appliedTo` "a,b,c,d,e,f" @?= Right "d"
+    , testCase "negate index out of range" $
+        "$-3" `appliedTo` "a,b" @?= Left [Lhx.Error "Index is out of range: -3"]
+    , testCase "to apply the function on the negate index" $
+        "$-3:rev;" `appliedTo` "a,b,c,abcd,e,f" @?= Right "dcba"
     ]
  where
   appliedTo templateT inputString = do
