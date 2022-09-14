@@ -82,7 +82,7 @@ brokenTemplateTests =
     , "$foo" @!! "Even a sole function call should be terminated with ;"
     , "$9783535:foo:bar:baz:bazzz:a:b:c:d:e"
         @!! "Any complex call should be terminated with ;"
-    , "$- 12" @!! "there must not be a space after the sign"
+    , "$- 12" @!! "There must not be a space after the sign"
     ]
 
 tests :: TestTree
