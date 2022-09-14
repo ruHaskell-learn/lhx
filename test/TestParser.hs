@@ -24,6 +24,10 @@ functionCallParsingTests =
         [LP.Apply 8 [LP.FName "foo1", LP.FName "bar2", LP.FName "baz3"]]
     , "$a1s2d3;" ?=> [LP.Apply 0 [LP.FName "a1s2d3"]]
     , "$4abc" ?=> [LP.Apply 4 [], LP.Raw "abc"]
+    , "$+7" ?=> [LP.Apply 7 []]
+    , "$-7" ?=> [LP.Apply (-7) []]
+    , "$-0" ?=> [LP.Apply 0 []]
+    , "$-12:foo:bar:baz;" ?=> [LP.Apply (-12) [LP.FName "foo", LP.FName "bar", LP.FName "baz"]]
     ]
 
 rawTextParsingTests :: TestTree
@@ -63,7 +67,6 @@ correctTemplatesTests =
     , complexTemplateParsingTests
     ]
 
-
 (@!!) :: Text -> String -> TestTree
 input @!! message =
   testCase (T.unpack input) $ isLeft (LP.parse input) @? message
@@ -78,7 +81,8 @@ brokenTemplateTests =
     , "$12:4abc;" @!! "Function name cannot start with a digit"
     , "$foo" @!! "Even a sole function call should be terminated with ;"
     , "$9783535:foo:bar:baz:bazzz:a:b:c:d:e"
-      @!! "Any complex call should be terminated with ;"
+        @!! "Any complex call should be terminated with ;"
+    , "$- 12" @!! "There must not be a space after the sign"
     ]
 
 tests :: TestTree
