@@ -4,7 +4,8 @@ import Control.Monad
 import Data.Either
 import Data.Function ((&))
 import Data.Bifunctor
-import Data.Text as T hiding (map)
+import Data.Text (Text)
+import Data.Text qualified as T
 
 import Lhx.Parser
 
@@ -28,7 +29,7 @@ apply tpl = repack . foldMap wrap . sequenceA tpl
     wrap (Left  e) = ("", [e])
 
 makeInput :: Separator -> Text -> Input
-makeInput (Separator sep) s = Input s (splitOn sep s)
+makeInput (Separator sep) s = Input s (T.splitOn sep s)
 
 functions :: [(FName, (Text -> Either Error Text))]
 functions =
@@ -69,6 +70,11 @@ makeTemplate = buildTemplate <=< first wrap . parse
 
 at :: Int -> Input -> Either Error Text
 at 0 Input{iRaw = raw} = Right raw
-at ix Input{iFields = fs}
-  | ix <= Prelude.length fs = Right $ fs !! (ix - 1)
-  | otherwise = Left . Error $ "Index is out of range: " <> T.pack (show ix)
+at ix Input{iFields = fs} =
+  case drop (abs ix - 1) (prepare fs) of
+    (x:_) -> Right x
+    _     -> Left . Error $ "Index is out of range: " <> T.pack (show ix)
+  where
+    prepare
+      | ix < 0    = reverse
+      | otherwise = id

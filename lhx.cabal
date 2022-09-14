@@ -66,4 +66,3 @@ test-suite lhx-test
                   , tasty
                   , tasty-hunit
                   , tasty-quickcheck
-                  , either

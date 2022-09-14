@@ -1,97 +1,91 @@
 module TestTemplate (tests) where
 
 import Data.Either (isLeft, isRight)
-import Data.Either.Combinators (leftToMaybe, rightToMaybe)
-import Data.Maybe (fromMaybe)
-import Data.Text (intercalate)
 import Data.Text qualified as T
 import Data.Text.Arbitrary ()
-import Lhx (Separator (Separator))
-import Lhx qualified as L
-import Lhx.Parser qualified as LP
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (testCase, (@?), (@?=))
-import Test.Tasty.QuickCheck qualified as QS
+import Test.Tasty.QuickCheck qualified as QC
 
-makeTemplateTests :: TestTree
-makeTemplateTests =
+import Lhx (Separator(..))
+import Lhx qualified as Lhx
+import Lhx.Parser qualified as LP
+
+templateMakingTests :: TestTree
+templateMakingTests =
   testGroup
-    "make template"
+    "Making of templates"
     [ testGroup
-        "fail"
-        [ testCase "parse errors remain" $
-            isLeft (L.makeTemplate "$foo") @? "parsing error should remain"
-        , testCase "unknown function" $
-            isLeft (L.makeTemplate "$foo;") @? "function isn't in the list functions"
-        , testCase "all unknown functions must be caught" $
-            leftToMaybe (L.makeTemplate "$foo:bar:rev:baz:rev:bazzz:rev;")
-              @?= Just
-                [ L.Error "Unknown function: foo"
-                , L.Error "Unknown function: bar"
-                , L.Error "Unknown function: baz"
-                , L.Error "Unknown function: bazzz"
+        "Broken templates"
+        [ testCase "Unclosed function call" $
+            isLeft (Lhx.makeTemplate "$foo")
+            @? "Shouldn't accept non-closed function call"
+        , testCase "Unknown function" $
+            isLeft (Lhx.makeTemplate "$foo;")
+            @? "Shouldn't accept unknown function"
+        , testCase "Several unknown functions" $
+            case Lhx.makeTemplate "$foo:bar:rev:baz:rev:bazzz:rev;" of
+              Right _ -> error "impossible"
+              Left es -> es @?=
+                [ Lhx.Error "Unknown function: foo"
+                , Lhx.Error "Unknown function: bar"
+                , Lhx.Error "Unknown function: baz"
+                , Lhx.Error "Unknown function: bazzz"
                 ]
         ]
     , testGroup
-        "right"
-        [ testCase "all good functions must be parsed" $
-            isRight
-              ( L.makeTemplate $
-                  "$" <> intercalate ":" (map (LP.unFName . fst) L.functions) <> ";"
-              )
-              @? "don't apply function in the list functions"
+        "Correct templates"
+        [ testCase "All known functions" $
+            isRight (Lhx.makeTemplate $ mconcat
+              [ "$"
+              , T.intercalate ":" $ map (LP.unFName . fst) Lhx.functions
+              , ";"
+              ]) @? "Should accept any registered function"
         ]
     ]
 
-makeInputTest :: TestTree
-makeInputTest =
+inputMakingTests :: TestTree
+inputMakingTests =
   testGroup
-    "make input"
-    [ testCase "empty" $ L.makeInput (L.Separator " ") "" @?= L.Input "" [""]
-    , testCase "separator ','" $
-        L.makeInput (L.Separator ",") "a, b, c" @?= L.Input "a, b, c" ["a", " b", " c"]
+    "Make input"
+    [ testCase "Separating by ','" $
+        Lhx.iFields (Lhx.makeInput (Lhx.Separator ",") "a, b, c")
+        @?= ["a", " b", " c"]
     ]
 
-reverseTemplatePropety :: TestTree
-reverseTemplatePropety =
-  QS.testProperty "reverse function" $
-    \s -> fromMaybe False $
-      rightToMaybe $ do
-        template <- reverseTemplate
-        text <- L.apply template (L.makeInput (Separator ",") s)
-        pure $ text == T.reverse s
- where
-  reverseTemplate = L.makeTemplate "$rev;"
-
-applyFunctionTest :: TestTree
-applyFunctionTest =
+functionPropertyTests :: TestTree
+functionPropertyTests =
   testGroup
-    "Apply tests"
-    [ reverseTemplatePropety
+    "Function properties"
+    [ QC.testProperty "'rev' function" \s ->
+        either (const False) id do
+          template <- Lhx.makeTemplate "$rev;"
+          result <- Lhx.apply template (Lhx.makeInput (Separator ",") s)
+          pure $ result == T.reverse s
     ]
 
-applyTemplateWithIndexes :: TestTree
-applyTemplateWithIndexes =
+indexingTests :: TestTree
+indexingTests =
   testGroup
-    "indexes"
-    [ testCase "zero index is all input string" $
-        "$0:rev;" `appliedTo` "abcd" @?= Right "dcba"
-    , testCase "swap 2 arguments" $
+    "Indexing"
+    [ testCase "Zero index should capture the whole input" $
+        "$0" `appliedTo` "abcd" @?= Right "abcd"
+    , testCase "Two fields should be swaped" $
         "$2,$1" `appliedTo` "a,b" @?= Right "b,a"
-    , testCase "function with indexes" $
+    , testCase "Functions should work well with indices" $
         "$2:rev:rev;,$1:rev;" `appliedTo` "abc,de" @?= Right "de,cba"
     ]
  where
   appliedTo templateT inputString = do
-    template <- L.makeTemplate templateT
-    L.apply template (L.makeInput (Separator ",") inputString)
+    template <- Lhx.makeTemplate templateT
+    Lhx.apply template $ Lhx.makeInput (Separator ",") inputString
 
 tests :: TestTree
 tests =
   testGroup
-    "Template tests"
-    [ makeTemplateTests
-    , makeInputTest
-    , applyFunctionTest
-    , applyTemplateWithIndexes
+    "Templating tests"
+    [ templateMakingTests
+    , inputMakingTests
+    , functionPropertyTests
+    , indexingTests
     ]
