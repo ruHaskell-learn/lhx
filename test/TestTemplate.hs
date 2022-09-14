@@ -10,7 +10,7 @@ import Lhx (Separator (Separator))
 import Lhx qualified as L
 import Lhx.Parser qualified as LP
 import Test.Tasty (TestTree, testGroup)
-import Test.Tasty.HUnit (assertEqual, testCase, (@?), (@?=))
+import Test.Tasty.HUnit (testCase, (@?), (@?=))
 import Test.Tasty.QuickCheck qualified as QS
 
 makeTemplateTests :: TestTree
@@ -52,34 +52,39 @@ makeInputTest =
         L.makeInput (L.Separator ",") "a, b, c" @?= L.Input "a, b, c" ["a", " b", " c"]
     ]
 
+reverseTemplatePropety :: TestTree
+reverseTemplatePropety =
+  QS.testProperty "reverse function" $
+    \s -> fromMaybe False $
+      rightToMaybe $ do
+        template <- reverseTemplate
+        text <- L.apply template (L.makeInput (Separator ",") s)
+        pure $ text == T.reverse s
+ where
+  reverseTemplate = L.makeTemplate "$rev;"
+
 applyFunctionTest :: TestTree
 applyFunctionTest =
-  let reverseTemplate = L.makeTemplate "$rev;"
-   in testGroup
-        "Apply tests"
-        [ QS.testProperty "reverse function" $
-            \s -> fromMaybe False $
-              rightToMaybe $ do
-                template <- reverseTemplate
-                text <- L.apply template (L.makeInput (Separator ",") s)
-                pure $ text == T.reverse s
-        ]
+  testGroup
+    "Apply tests"
+    [ reverseTemplatePropety
+    ]
 
 applyTemplateWithIndexes :: TestTree
 applyTemplateWithIndexes =
-  let makeAssert templateT inputString result =
-        assertEqual (T.unpack templateT) (Right result) $ do
-          template <- L.makeTemplate templateT
-          L.apply template (L.makeInput (Separator ",") inputString)
-   in testGroup
-        "indexes"
-        [ testCase "zero index is all input string" $
-            makeAssert "$0:rev;" "abcd" "dcba"
-        , testCase "swap 2 arguments" $
-            makeAssert "$2,$1" "a,b" "b,a"
-        , testCase "function with indexes" $
-            makeAssert "$2:rev:rev;,$1:rev;" "abc,de" "de,cba"
-        ]
+  testGroup
+    "indexes"
+    [ testCase "zero index is all input string" $
+        "$0:rev;" `appliedTo` "abcd" @?= Right "dcba"
+    , testCase "swap 2 arguments" $
+        "$2,$1" `appliedTo` "a,b" @?= Right "b,a"
+    , testCase "function with indexes" $
+        "$2:rev:rev;,$1:rev;" `appliedTo` "abc,de" @?= Right "de,cba"
+    ]
+ where
+  appliedTo templateT inputString = do
+    template <- L.makeTemplate templateT
+    L.apply template (L.makeInput (Separator ",") inputString)
 
 tests :: TestTree
 tests =
