@@ -20,6 +20,8 @@ common defaults
         ImportQualifiedPost
         OverloadedStrings
         TupleSections
+        TypeApplications
+        LambdaCase
 
     ghc-options:
         -Wall -Wcompat -Wincomplete-record-updates
@@ -44,6 +46,20 @@ executable lhx
     build-depends:  lhx
                   , text
                   , optparse-applicative
+
+executable lhx-tui
+    import:         defaults
+    hs-source-dirs: app-tui
+    main-is:        Main.hs
+    ghc-options:    -threaded
+    default-extensions:
+      TemplateHaskell
+    build-depends:  lhx
+                  , text ^>=1.2
+                  , brick
+                  , vty
+                  , microlens
+                  , microlens-th
 
 executable lhx-tpgui
     import:         defaults
