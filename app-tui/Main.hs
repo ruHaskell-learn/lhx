@@ -4,6 +4,7 @@ import Brick
 import Brick.Widgets.Border
 import Brick.Widgets.Border.Style
 import Brick.Widgets.Edit
+import qualified Graphics.Vty as Vty
 import Control.Monad.State hiding (State)
 import Data.Either (isLeft)
 import Data.Text (Text)
@@ -37,7 +38,7 @@ main = void $ defaultMain @Name App
   { appDraw = draw
   , appChooseCursor = \s -> showCursorNamed $ s ^. sFocused
   , appHandleEvent = handle
-  , appStartEvent = pure ()
+  , appStartEvent = initMouse
   , appAttrMap = \_ ->
     attrMap VA.defAttr
     [ (editAttr, VA.defAttr)
@@ -67,21 +68,29 @@ draw s = [layout]
   where
     f = s ^. sFocused
     layout = vBox [inp, tpl, out]
-    inp =
-      vLimitPercent 30
-      $ textArea (f == Input) Input $ s ^. sInput
-    tpl =
-      vLimit (min 5 $ length . getEditContents $ s ^. sTemplateEditor)
+    inp = clickable Input
+      . vLimitPercent 30
+      . textArea (f == Input) Input 
+      $ s ^. sInput
+    tpl = clickable Template
+      . vLimit (min 5 $ length . getEditContents $ s ^. sTemplateEditor)
       . withVScrollBars OnRight
       . renderEditor re True
       $ s ^. sTemplateEditor
-    out = textArea (f == Output) Output $ s ^. sOutput
+    out = clickable Output . textArea (f == Output) Output $ s ^. sOutput
     re = withAttr edAttr . txt . T.unlines
     edAttr
       | s ^. sTemplate . to isLeft = parsingError
       | otherwise = editAttr
 
-handle :: BrickEvent Name e -> EventM Name State ()
+initMouse :: EventM n s ()
+initMouse = do
+  vty <- Brick.getVtyHandle
+  let output = Vty.outputIface vty
+  when (Vty.supportsMode output Vty.Mouse) $
+    liftIO $ Vty.setMode output Vty.Mouse True
+
+handle :: BrickEvent Name () -> EventM Name State ()
 handle evt =
   case evt of
     VtyEvent (EvKey KEsc []) -> halt
@@ -94,6 +103,8 @@ handle evt =
       modify $ over sFocused \case
         n | n == maxBound -> minBound
           | otherwise -> succ n
+    MouseDown clickedArea Vty.BLeft _ _ -> do
+      modify (sFocused .~ clickedArea)
     _ ->
       gets (view sFocused) >>= \case
         Input ->
@@ -127,7 +138,6 @@ textArea focused name =
   withBorderStyle bs
   . border
   . withVScrollBars OnRight
-  . withHScrollBars OnBottom
   . viewport name Both
   . txt
   . T.unlines
@@ -142,7 +152,9 @@ handleTextAreaEvents :: n -> BrickEvent n e -> EventM n s ()
 handleTextAreaEvents name = \case
   VtyEvent (EvKey KHome []) -> vScrollToBeginning vps
   VtyEvent (EvKey KEnd [])  -> vScrollToEnd vps
+  MouseDown _ Vty.BScrollUp _ _ -> vScrollBy vps (-1)
   VtyEvent (EvKey KUp [])   -> vScrollBy vps (-1)
+  MouseDown _ Vty.BScrollDown _ _ -> vScrollBy vps 1
   VtyEvent (EvKey KDown []) -> vScrollBy vps 1
   _ -> pure ()
   where
