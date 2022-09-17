@@ -1,5 +1,3 @@
-{-# LANGUAGE PatternSynonyms #-}
-{-# LANGUAGE ViewPatterns #-}
 module Main where
 
 import Brick
@@ -48,17 +46,17 @@ main = void $ defaultMain @Name App
     ]
   } State
   { _sInput =
-      [ "Bob Smith, 1980"
-      , "Ann Thompson, 1970"
-      , "John Doe"
-      , "Jane Air, 1920, 2000"
-      , "foobar"
-      , "foobar"
-      , "foobar"
-      , "foobar"
-      , "foobar"
-      , "foobar"
-      ]
+       [ "Bob Smith, 1980"
+       , "Ann Thompson, 1970"
+       , "John Doe"
+       , "Jane Air, 1920, 2000"
+       , "foobar"
+       , "foobar"
+       , "foobar"
+       , "foobar"
+       , "foobar"
+       , "foobar"
+       ]
   , _sTemplateEditor = editorText Template Nothing ""
   , _sTemplate = Right []
   , _sOutput = []
