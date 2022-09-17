@@ -1,11 +1,10 @@
 module Main where
 
-import Control.Monad (void)
-
 import Brick
 import Brick.Widgets.Border
 import Brick.Widgets.Border.Style
 import Brick.Widgets.Edit
+import Control.Monad.State hiding (State)
 import Data.Either (isLeft)
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -72,8 +71,9 @@ draw s = [layout]
       vLimitPercent 30
       $ textArea (f == Input) Input $ s ^. sInput
     tpl =
-      vLimit 3
-      $ renderEditor re True
+      vLimit (min 5 $ length . getEditContents $ s ^. sTemplateEditor)
+      . withVScrollBars OnRight
+      . renderEditor re True
       $ s ^. sTemplateEditor
     out = textArea (f == Output) Output $ s ^. sOutput
     re = withAttr edAttr . txt . T.unlines
@@ -86,35 +86,49 @@ handle evt =
   case evt of
     VtyEvent (EvKey KEsc []) -> halt
     VtyEvent (EvKey (KChar 'c') [MCtrl]) -> halt
-    VtyEvent (EvKey KDown [MCtrl]) ->
-      modify \s -> s & sFocused %~ \case
+    VtyEvent (EvKey KBackTab []) ->
+      modify $ over sFocused \case
+        n | n == minBound -> maxBound
+          | otherwise -> pred n
+    VtyEvent (EvKey (KChar '\t') []) ->
+      modify $ over sFocused \case
         n | n == maxBound -> minBound
           | otherwise -> succ n
-    _ -> do
-      zoom sTemplateEditor $ handleEditorEvent evt
-      ed <- gets $ view sTemplateEditor
-      modify \s ->
-        s & sTemplate .~ case getEditContents ed of
-          (t:_) -> Lhx.makeTemplate t
-          _     -> Right []
-      tpl <- gets $ view sTemplate
-      case tpl of
-        Left _ -> pure ()
-        Right t -> do
-          is <- gets $ view sInput
-          let os = is ^.. traversed
-                   . to (Lhx.makeInput (Lhx.Separator ","))
-                   . to (Lhx.apply t)
-                   . _Right
-          modify $ \s -> s & sOutput .~ os
+    _ ->
+      gets (view sFocused) >>= \case
+        Input ->
+          handleTextAreaEvents Input evt
+        Output ->
+          handleTextAreaEvents Output evt
+        Template -> do
+          zoom sTemplateEditor $ handleEditorEvent evt
+          ed <- gets $ view sTemplateEditor
+          modify \s ->
+            s & sTemplate .~ case getEditContents ed of
+              (t:_) -> Lhx.makeTemplate t
+              _     -> Right []
+          updateOutput
 
-textArea :: Bool -> Name -> [Text] -> Widget Name
-textArea focused n =
+updateOutput :: MonadState State m => m ()
+updateOutput = do
+  tpl <- gets $ view sTemplate
+  case tpl of
+    Left _  -> pure ()
+    Right t -> do
+      is <- gets $ view sInput
+      let os = is ^.. traversed
+               . to (Lhx.makeInput (Lhx.Separator ","))
+               . to (Lhx.apply t)
+               . _Right
+      modify $ \s -> s & sOutput .~ os
+
+textArea :: (Show n, Ord n) => Bool -> n -> [Text] -> Widget n
+textArea focused name =
   withBorderStyle bs
   . border
   . withVScrollBars OnRight
   . withHScrollBars OnBottom
-  . viewport n Both
+  . viewport name Both
   . txt
   . T.unlines
   where
@@ -123,3 +137,13 @@ textArea focused n =
 
 parsingError :: AttrName
 parsingError = attrName "parsingError"
+
+handleTextAreaEvents :: n -> BrickEvent n e -> EventM n s ()
+handleTextAreaEvents name = \case
+  VtyEvent (EvKey KHome []) -> vScrollToBeginning vps
+  VtyEvent (EvKey KEnd [])  -> vScrollToEnd vps
+  VtyEvent (EvKey KUp [])   -> vScrollBy vps (-1)
+  VtyEvent (EvKey KDown []) -> vScrollBy vps 1
+  _ -> pure ()
+  where
+    vps = viewportScroll name

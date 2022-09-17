@@ -22,6 +22,7 @@ common defaults
         TupleSections
         TypeApplications
         LambdaCase
+        FlexibleContexts
 
     ghc-options:
         -Wall -Wcompat -Wincomplete-record-updates
@@ -60,6 +61,7 @@ executable lhx-tui
                   , vty
                   , microlens
                   , microlens-th
+                  , mtl
 
 executable lhx-tpgui
     import:         defaults
