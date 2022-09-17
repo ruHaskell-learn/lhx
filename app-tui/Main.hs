@@ -66,18 +66,23 @@ main = void $ defaultMain @Name App
 draw :: State -> [Widget Name]
 draw s = [layout]
   where
-    f = s ^. sFocused
+    focus = s ^. sFocused
     layout = vBox [inp, tpl, out]
-    inp = clickable Input
+    inp =
+      clickable Input
       . vLimitPercent 30
-      . textArea (f == Input) Input 
+      . textArea (focus == Input) Input
       $ s ^. sInput
-    tpl = clickable Template
+    tpl =
+      clickable Template
       . vLimit (min 5 $ length . getEditContents $ s ^. sTemplateEditor)
       . withVScrollBars OnRight
       . renderEditor re True
       $ s ^. sTemplateEditor
-    out = clickable Output . textArea (f == Output) Output $ s ^. sOutput
+    out =
+      clickable Output
+      . textArea (focus == Output) Output
+      $ s ^. sOutput
     re = withAttr edAttr . txt . T.unlines
     edAttr
       | s ^. sTemplate . to isLeft = parsingError
@@ -103,8 +108,8 @@ handle evt =
       modify $ over sFocused \case
         n | n == maxBound -> minBound
           | otherwise -> succ n
-    MouseDown clickedArea Vty.BLeft _ _ -> do
-      modify (sFocused .~ clickedArea)
+    MouseDown name Vty.BLeft [] _ ->
+      modify $ sFocused .~ name
     _ ->
       gets (view sFocused) >>= \case
         Input ->
@@ -114,24 +119,22 @@ handle evt =
         Template -> do
           zoom sTemplateEditor $ handleEditorEvent evt
           ed <- gets $ view sTemplateEditor
-          modify \s ->
-            s & sTemplate .~ case getEditContents ed of
-              (t:_) -> Lhx.makeTemplate t
-              _     -> Right []
+          modify $ sTemplate .~ case getEditContents ed of
+            (t:_) -> Lhx.makeTemplate t
+            _     -> Right []
           updateOutput
 
 updateOutput :: MonadState State m => m ()
-updateOutput = do
-  tpl <- gets $ view sTemplate
-  case tpl of
-    Left _  -> pure ()
-    Right t -> do
+updateOutput =
+  gets (view sTemplate) >>= \case
+    Left _    -> pure ()
+    Right tpl -> do
       is <- gets $ view sInput
       let os = is ^.. traversed
                . to (Lhx.makeInput (Lhx.Separator ","))
-               . to (Lhx.apply t)
+               . to (Lhx.apply tpl)
                . _Right
-      modify $ \s -> s & sOutput .~ os
+      modify $ sOutput .~ os
 
 textArea :: (Show n, Ord n) => Bool -> n -> [Text] -> Widget n
 textArea focused name =
@@ -152,10 +155,10 @@ handleTextAreaEvents :: n -> BrickEvent n e -> EventM n s ()
 handleTextAreaEvents name = \case
   VtyEvent (EvKey KHome []) -> vScrollToBeginning vps
   VtyEvent (EvKey KEnd [])  -> vScrollToEnd vps
-  MouseDown _ Vty.BScrollUp _ _ -> vScrollBy vps (-1)
   VtyEvent (EvKey KUp [])   -> vScrollBy vps (-1)
-  MouseDown _ Vty.BScrollDown _ _ -> vScrollBy vps 1
   VtyEvent (EvKey KDown []) -> vScrollBy vps 1
+  MouseDown _ Vty.BScrollUp _ _   -> vScrollBy vps (-1)
+  MouseDown _ Vty.BScrollDown _ _ -> vScrollBy vps 1
   _ -> pure ()
   where
     vps = viewportScroll name
