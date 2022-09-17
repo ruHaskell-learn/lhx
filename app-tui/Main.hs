@@ -15,6 +15,8 @@ import Lens.Micro.Extras (view)
 import Lens.Micro.TH
 
 import Lhx qualified
+import Graphics.Vty (Button(..))
+import qualified Graphics.Vty as Brick
 
 data Name
   = Input
@@ -33,56 +35,64 @@ data State = State
 $(makeLenses 'State)
 
 main :: IO ()
-main = void $ defaultMain @Name App
-  { appDraw = draw
-  , appChooseCursor = \s -> showCursorNamed $ s ^. sFocused
-  , appHandleEvent = handle
-  , appStartEvent = pure ()
-  , appAttrMap = \_ ->
-    attrMap VA.defAttr
-    [ (editAttr, VA.defAttr)
-    , (parsingError, VA.withForeColor VA.defAttr VA.red)
-    ]
-  } State
-  { _sInput =
-       [ "Bob Smith, 1980"
-       , "Ann Thompson, 1970"
-       , "John Doe"
-       , "Jane Air, 1920, 2000"
-       , "foobar"
-       , "foobar"
-       , "foobar"
-       , "foobar"
-       , "foobar"
-       , "foobar"
-       ]
-  , _sTemplateEditor = editorText Template Nothing ""
-  , _sTemplate = Right []
-  , _sOutput = []
-  , _sFocused = Template
-  }
+main = do
+  void $ defaultMain @Name App
+    { appDraw = draw
+    , appChooseCursor = \s -> showCursorNamed $ s ^. sFocused
+    , appHandleEvent = handle
+    , appStartEvent = initMouse
+    , appAttrMap = \_ ->
+      attrMap VA.defAttr
+      [ (editAttr, VA.defAttr)
+      , (parsingError, VA.withForeColor VA.defAttr VA.red)
+      ]
+    } State
+    { _sInput =
+        [ "Bob Smith, 1980"
+        , "Ann Thompson, 1970"
+        , "John Doe"
+        , "Jane Air, 1920, 2000"
+        , "foobar"
+        , "foobar"
+        , "foobar"
+        , "foobar"
+        , "foobar"
+        , "foobar"
+        ]
+    , _sTemplateEditor = editorText Template Nothing ""
+    , _sTemplate = Right []
+    , _sOutput = []
+    , _sFocused = Template
+    }
 
 draw :: State -> [Widget Name]
 draw s = [layout]
   where
     f = s ^. sFocused
     layout = vBox [inp, tpl, out]
-    inp =
-      vLimitPercent 30
+    inp = clickable Input 
+      $ vLimitPercent 30
       $ textArea (f == Input) Input $ s ^. sInput
-    tpl =
-      vLimit (min 5 $ length . getEditContents $ s ^. sTemplateEditor)
+    tpl = clickable Template
+      $ vLimit (min 5 $ length . getEditContents $ s ^. sTemplateEditor)
       . withVScrollBars OnRight
       . renderEditor re True
       $ s ^. sTemplateEditor
-    out = textArea (f == Output) Output $ s ^. sOutput
+    out = clickable Output $ textArea (f == Output) Output $ s ^. sOutput
     re = withAttr edAttr . txt . T.unlines
     edAttr
       | s ^. sTemplate . to isLeft = parsingError
       | otherwise = editAttr
 
-handle :: BrickEvent Name e -> EventM Name State ()
-handle evt =
+initMouse :: EventM n s ()
+initMouse = do
+  vty <- Brick.getVtyHandle
+  let output = Brick.outputIface vty
+  when (Brick.supportsMode output Brick.Mouse) $
+    liftIO $ Brick.setMode output Brick.Mouse True
+
+handle :: BrickEvent Name () -> EventM Name State ()
+handle evt = do
   case evt of
     VtyEvent (EvKey KEsc []) -> halt
     VtyEvent (EvKey (KChar 'c') [MCtrl]) -> halt
@@ -94,6 +104,8 @@ handle evt =
       modify $ over sFocused \case
         n | n == maxBound -> minBound
           | otherwise -> succ n
+    MouseDown clickedArea BLeft _ _ -> do
+      modify (sFocused .~ clickedArea)
     _ ->
       gets (view sFocused) >>= \case
         Input ->
@@ -142,7 +154,9 @@ handleTextAreaEvents :: n -> BrickEvent n e -> EventM n s ()
 handleTextAreaEvents name = \case
   VtyEvent (EvKey KHome []) -> vScrollToBeginning vps
   VtyEvent (EvKey KEnd [])  -> vScrollToEnd vps
+  MouseDown _ BScrollUp _ _ -> vScrollBy vps (-1)
   VtyEvent (EvKey KUp [])   -> vScrollBy vps (-1)
+  MouseDown _ BScrollDown _ _ -> vScrollBy vps 1
   VtyEvent (EvKey KDown []) -> vScrollBy vps 1
   _ -> pure ()
   where
