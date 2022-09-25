@@ -56,7 +56,7 @@ executable lhx-tui
     default-extensions:
       TemplateHaskell
     build-depends:  lhx
-                  , text ^>=1.2
+                  , text
                   , brick
                   , vty
                   , microlens
@@ -71,6 +71,17 @@ executable lhx-tpgui
     build-depends:  lhx
                   , text
                   , threepenny-gui
+
+executable lhx-web
+    import:         defaults
+    hs-source-dirs: app-web
+    main-is:        Main.hs
+    ghc-options:    -threaded
+    build-depends:  lhx
+                  , text
+                  , scotty
+                  , blaze-html
+                  , blaze-markup
 
 test-suite lhx-test
     import:         defaults
