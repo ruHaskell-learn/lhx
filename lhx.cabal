@@ -83,6 +83,21 @@ executable lhx-web
                   , blaze-html
                   , blaze-markup
 
+executable lhx-webx
+    import:         defaults
+    hs-source-dirs: app-webx
+    main-is:        Main.hs
+    ghc-options:    -threaded
+    build-depends:  lhx
+                  , text
+                  , scotty
+                  , blaze-html
+                  , blaze-markup
+                  , wai
+                  , wai-websockets
+                  , websockets
+                  , aeson
+
 test-suite lhx-test
     import:         defaults
     type:           exitcode-stdio-1.0
