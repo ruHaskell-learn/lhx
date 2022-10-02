@@ -45,19 +45,22 @@ view = page $ wsWrapper do
   H.div "Input:"
   H.form
     ! H.customAttribute "hx-ws" "send"
+    ! H.customAttribute "hx-trigger"
+    "keyup from:[name='input'] changed delay:1s"
     $ do
       H.textarea
         ! A.name "input"
+        ! A.autocomplete "off"
         $ ""
-      H.button  -- TODO: replace with submit on timer
-        ! A.action "submit"
-        $ "Submit"
   H.div "Template:"
   H.form
     ! H.customAttribute "hx-ws" "send"
+    ! H.customAttribute "hx-trigger"
+    "keyup from:[name='template'] changed delay:1s"
     $ do
       H.input
         ! A.name "template"
+        ! A.autocomplete "off"
       H.span
         ! A.id "template-errors"
         $ ""
