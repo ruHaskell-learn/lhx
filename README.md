@@ -1,5 +1,7 @@
 # Line Hyper-eXpander
 
+![logo](data/lhx-big.png)
+
 The LHX is dual:
 
 - it is a tool to do some work
