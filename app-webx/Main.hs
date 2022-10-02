@@ -17,8 +17,10 @@ import Text.Blaze.Html5 (Html, (!))
 import Text.Blaze.Html5 qualified as H
 import Text.Blaze.Html5.Attributes qualified as A
 import Text.Blaze (toMarkup, toValue)
+import XStatic
 
 import Lhx qualified
+import Lhx.Assets qualified
 
 data State = State
   { sInput         :: [Lhx.Input]
@@ -38,6 +40,7 @@ instance FromJSON WsMessage where
 main :: IO ()
 main = scotty 8000 do
   middleware withWS
+  middleware $ xstaticMiddleware [ svgIconFile ]
   get "/" view
 
 view :: ActionM ()
@@ -82,14 +85,18 @@ page inner = html $ R.renderHtml do
   H.docTypeHtml do
     H.head do
       H.title "LHX"
+      H.link
+        ! A.rel "shortcut icon"
+        ! A.href (toValue Lhx.Assets.ico)
+      H.link
+        ! A.rel "icon"
+        ! A.sizes "any"
+        ! A.href "/xstatic/lhx.svg"
       H.script
         ! A.src "https://unpkg.com/htmx.org@1.8.0"
         $ ""
     H.body do
       inner
-
-webLines :: Text -> [Text]
-webLines = T.split (== '\n') . T.filter (/= '\r')
 
 withWS :: Middleware
 withWS = websocketsOr defaultConnectionOptions wsApp
@@ -138,4 +145,12 @@ initialState :: State
 initialState = State
   { sInput = []
   , sTemplate = []
+  }
+
+svgIconFile :: XStaticFile
+svgIconFile = XStaticFile
+  { xfPath = "/lhx.svg"
+  , xfContent = Lhx.Assets.svg
+  , xfETag = ""
+  , xfType = "image/svg+xml"
   }
