@@ -15,6 +15,8 @@ extra-source-files:
 data-files:
     data/lhx.svg.gz
     data/lhx-16x16.ico
+    data/mvp.css.gz
+    data/htmx.min.js.gz
 
 common defaults
     default-language:   Haskell2010
@@ -32,6 +34,16 @@ common defaults
         -Wall -Wcompat -Wincomplete-record-updates
         -Wincomplete-uni-patterns -Wredundant-constraints
         -Wmissing-exported-signatures
+
+common scotty-app
+    import:          defaults
+    build-depends:  lhx
+                  , lhx-assets
+                  , text
+                  , scotty
+                  , blaze-html
+                  , blaze-markup
+                  , xstatic
 
 library
     import:          defaults
@@ -83,36 +95,27 @@ executable lhx-tpgui
     main-is:        Main.hs
     ghc-options:    -threaded
     build-depends:  lhx
+                  , lhx-assets
                   , text
                   , threepenny-gui
 
 executable lhx-web
-    import:         defaults
+    import:         scotty-app
     hs-source-dirs: app-web
     main-is:        Main.hs
     ghc-options:    -threaded
-    build-depends:  lhx
-                  , text
-                  , scotty
-                  , blaze-html
-                  , blaze-markup
+    build-depends:  file-embed
 
 executable lhx-webx
-    import:         defaults
+    import:         scotty-app
     hs-source-dirs: app-webx
     main-is:        Main.hs
     ghc-options:    -threaded
-    build-depends:  lhx
-                  , lhx-assets
-                  , text
-                  , scotty
-                  , blaze-html
-                  , blaze-markup
+    build-depends:  file-embed
                   , wai
                   , wai-websockets
                   , websockets
                   , aeson
-                  , xstatic
 
 test-suite lhx-test
     import:         defaults
