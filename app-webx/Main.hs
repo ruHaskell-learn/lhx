@@ -1,3 +1,5 @@
+{-# LANGUAGE TemplateHaskell #-}
+
 module Main where
 
 import Control.Applicative
@@ -10,6 +12,7 @@ import Network.Wai.Handler.WebSockets
 import Network.WebSockets
 import Data.Aeson
 import Data.Either (rights)
+import Data.FileEmbed (embedFile)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Text.Blaze.Html.Renderer.Text qualified as R
@@ -40,7 +43,10 @@ instance FromJSON WsMessage where
 main :: IO ()
 main = scotty 8000 do
   middleware withWS
-  middleware $ xstaticMiddleware [ svgIconFile ]
+  middleware $ xstaticMiddleware
+    [ svgIconFile
+    , htmxJsFile
+    ]
   get "/" view
 
 view :: ActionM ()
@@ -93,7 +99,7 @@ page inner = html $ R.renderHtml do
         ! A.sizes "any"
         ! A.href "/xstatic/lhx.svg"
       H.script
-        ! A.src "https://unpkg.com/htmx.org@1.8.0"
+        ! A.src "/xstatic/htmx.min.js"
         $ ""
     H.body do
       inner
@@ -153,4 +159,12 @@ svgIconFile = XStaticFile
   , xfContent = Lhx.Assets.svg
   , xfETag = ""
   , xfType = "image/svg+xml"
+  }
+
+htmxJsFile :: XStaticFile
+htmxJsFile = XStaticFile
+  { xfPath = "/htmx.min.js"
+  , xfContent = $(embedFile "data/htmx.min.js.gz")
+  , xfETag = ""
+  , xfType = "application/javascript"
   }

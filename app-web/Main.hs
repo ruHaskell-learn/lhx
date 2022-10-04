@@ -1,9 +1,11 @@
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module Main where
 
 import Web.Scotty
 import Data.Either (rights)
+import Data.FileEmbed (embedFile)
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -12,8 +14,10 @@ import Text.Blaze.Html5 (Html, (!))
 import Text.Blaze.Html5 qualified as H
 import Text.Blaze.Html5.Attributes qualified as A
 import Text.Blaze (toMarkup, toValue)
+import XStatic
 
 import Lhx qualified
+import Lhx.Assets qualified
 
 data FormState = FormState
   { fsInput         :: Text
@@ -24,6 +28,10 @@ data FormState = FormState
 
 main :: IO ()
 main = scotty 8000 do
+  middleware $ xstaticMiddleware
+    [ svgIconFile
+    , mvpCssFile
+    ]
   get "/" $ view FormState
     { fsInput = ""
     , fsTemplate = ""
@@ -78,10 +86,33 @@ page inner = html $ R.renderHtml do
     H.head do
       H.title "LHX"
       H.link
+        ! A.rel "shortcut icon"
+        ! A.href (toValue Lhx.Assets.ico)
+      H.link
+        ! A.rel "icon"
+        ! A.sizes "any"
+        ! A.href "/xstatic/lhx.svg"
+      H.link
         ! A.rel "stylesheet"
-        ! A.href "https://unpkg.com/mvp.css@1.11/mvp.css"
+        ! A.href "/xstatic/mvp.css"
     H.body do
       inner
 
 webLines :: Text -> [Text]
 webLines = T.split (== '\n') . T.filter (/= '\r')
+
+svgIconFile :: XStaticFile
+svgIconFile = XStaticFile
+  { xfPath = "/lhx.svg"
+  , xfContent = Lhx.Assets.svg
+  , xfETag = ""
+  , xfType = "image/svg+xml"
+  }
+
+mvpCssFile :: XStaticFile
+mvpCssFile = XStaticFile
+  { xfPath = "/mvp.css"
+  , xfContent = $(embedFile "data/mvp.css.gz")
+  , xfETag = ""
+  , xfType = "text/css"
+  }

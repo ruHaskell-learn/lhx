@@ -12,6 +12,7 @@ import Graphics.UI.Threepenny.Core
 
 import Lhx (Separator(..))
 import Lhx qualified
+import Lhx.Assets qualified
 
 fakeInput :: [Text]
 fakeInput =
@@ -34,6 +35,11 @@ gui :: Window -> UI ()
 gui win = do
   -- view
   pure win # set UI.title "LHX"
+  getHead win #+
+    [ UI.link
+      # set UI.rel "shortcut icon"
+      # set UI.href (T.unpack Lhx.Assets.ico)
+    ]
   inp <- UI.textarea
     -- # set UI.enabled False
     # set UI.style [("height", "150px")]
