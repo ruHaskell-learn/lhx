@@ -13,6 +13,7 @@ import Graphics.UI.Threepenny.Core
 import Lhx (Separator(..))
 import Lhx qualified
 import Lhx.Assets qualified
+import Lhx.Browser
 
 fakeInput :: [Text]
 fakeInput =
@@ -29,7 +30,8 @@ data State = State
   }
 
 main :: IO ()
-main = startGUI defaultConfig { jsPort = Just 8000 } gui
+main = withBrowserOnFreePort \port ->
+  startGUI defaultConfig { jsPort = Just port } gui
 
 gui :: Window -> UI ()
 gui win = do

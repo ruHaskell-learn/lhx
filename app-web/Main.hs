@@ -3,7 +3,6 @@
 
 module Main where
 
-import Web.Scotty
 import Data.Either (rights)
 import Data.FileEmbed (embedFile)
 import Data.Maybe (fromMaybe)
@@ -14,10 +13,12 @@ import Text.Blaze.Html5 (Html, (!))
 import Text.Blaze.Html5 qualified as H
 import Text.Blaze.Html5.Attributes qualified as A
 import Text.Blaze (toMarkup, toValue)
+import Web.Scotty
 import XStatic
 
 import Lhx qualified
 import Lhx.Assets qualified
+import Lhx.Browser
 
 data FormState = FormState
   { fsInput         :: Text
@@ -27,7 +28,10 @@ data FormState = FormState
   }
 
 main :: IO ()
-main = scotty 8000 do
+main = withBrowserOnFreePort (`scotty` app)
+
+app :: ScottyM ()
+app = do
   middleware $ xstaticMiddleware
     [ svgIconFile
     , mvpCssFile

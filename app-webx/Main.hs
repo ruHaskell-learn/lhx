@@ -24,10 +24,11 @@ import XStatic
 
 import Lhx qualified
 import Lhx.Assets qualified
+import Lhx.Browser
 
 data State = State
-  { sInput         :: [Lhx.Input]
-  , sTemplate      :: Lhx.Template
+  { sInput    :: [Lhx.Input]
+  , sTemplate :: Lhx.Template
   }
 
 data WsMessage
@@ -41,7 +42,10 @@ instance FromJSON WsMessage where
     (NewTemplate <$> v .: "template")
 
 main :: IO ()
-main = scotty 8000 do
+main = withBrowserOnFreePort (`scotty` app)
+
+app :: ScottyM ()
+app = do
   middleware withWS
   middleware $ xstaticMiddleware
     [ svgIconFile
