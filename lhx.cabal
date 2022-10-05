@@ -39,6 +39,7 @@ common scotty-app
     import:          defaults
     build-depends:  lhx
                   , lhx-assets
+                  , lhx-browser
                   , text
                   , scotty
                   , blaze-html
@@ -65,6 +66,15 @@ library lhx-assets
         , text
         , bytestring
         , file-embed
+
+library lhx-browser
+    import:          defaults
+    hs-source-dirs:  lib-browser
+    exposed-modules:
+        Lhx.Browser
+    build-depends:
+        , process
+        , port-utils
 
 executable lhx
     import:         defaults
@@ -96,6 +106,7 @@ executable lhx-tpgui
     ghc-options:    -threaded
     build-depends:  lhx
                   , lhx-assets
+                  , lhx-browser
                   , text
                   , threepenny-gui
 
