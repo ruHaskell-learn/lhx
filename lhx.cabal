@@ -127,6 +127,7 @@ executable lhx-webx
                   , wai-websockets
                   , websockets
                   , aeson
+                  , mtl
 
 test-suite lhx-test
     import:         defaults

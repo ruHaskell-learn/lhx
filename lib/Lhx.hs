@@ -31,7 +31,7 @@ apply tpl = repack . foldMap wrap . sequenceA tpl
 makeInput :: Separator -> Text -> Input
 makeInput (Separator sep) s = Input s (T.splitOn sep s)
 
-functions :: [(FName, (Text -> Either Error Text))]
+functions :: [(FName, Text -> Either Error Text)]
 functions =
   [ (FName "rev", Right . T.reverse)
   , (FName "strip", Right . T.strip)
@@ -51,8 +51,8 @@ buildTemplate = repack . foldMap wrap
     repack (_,  es) = Left es
     wrap (Raw t) = ok (Right . pure t)
     wrap (Apply ix ns) =
-      either oops ok $
-      fmap (\f i -> at ix i >>= f) (makeOp ns)
+      either oops (ok . (\f i -> at ix i >>= f)) $
+      makeOp ns
     ok   x = ([x], [])
     oops x = ([], x)
 
@@ -78,3 +78,6 @@ at ix Input{iFields = fs} =
     prepare
       | ix < 0    = reverse
       | otherwise = id
+
+errorsToText :: [Error] -> Text
+errorsToText = T.unlines . map getError

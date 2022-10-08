@@ -1,11 +1,15 @@
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE ConstraintKinds #-}
 
 module Main where
 
 import Control.Applicative
-import Control.Monad (forever)
+import Control.Monad (forever, void)
 import Control.Monad.IO.Class
-import Data.IORef
+import Control.Monad.Reader (MonadReader)
+import Control.Monad.Reader qualified as Reader
+import Control.Monad.State.Strict (MonadState)
+import Control.Monad.State.Strict qualified as State
 import Web.Scotty hiding (raw)
 import Network.Wai
 import Network.Wai.Handler.WebSockets
@@ -26,14 +30,20 @@ import Lhx qualified
 import Lhx.Assets qualified
 import Lhx.Browser
 
-data State = State
-  { sInput    :: [Lhx.Input]
-  , sTemplate :: Lhx.Template
+data WsState = WsState
+  { wsInput    :: [Lhx.Input]
+  , wsTemplate :: Lhx.Template
   }
 
 data WsMessage
   = NewInput Text
   | NewTemplate Text
+
+type WsMonad m =
+  ( MonadReader Connection m
+  , MonadState WsState m
+  , MonadIO m
+  )
 
 instance FromJSON WsMessage where
   parseJSON = withObject "WsMessage" \v ->
@@ -114,47 +124,70 @@ withWS = websocketsOr defaultConnectionOptions wsApp
 wsApp :: ServerApp
 wsApp pendingConn = do
   conn <- acceptRequest pendingConn
-  liftIO $ putStrLn "WS connected"
-  ref <- newIORef initialState
-  forever do
-    msg <- receiveDataMessage conn
-    let mbMsg = do
-          Text raw Nothing <- pure msg
-          decode raw
-    case mbMsg of
-      Nothing -> liftIO $ putStrLn $ "Unhandled: " <> show msg
-      Just (NewInput inp) -> do
-        liftIO $ atomicModifyIORef' ref \s ->
-              (s { sInput =
-                      map (Lhx.makeInput (Lhx.Separator ","))
-                      (T.lines inp)
-                 }, ())
-        updateOutput ref conn
-      Just (NewTemplate rawTpl) ->
-        case Lhx.makeTemplate rawTpl of
-          Left es ->
-            sendTextData conn . R.renderHtml $
-              H.span
-                ! A.id "template-errors"
-                ! A.title (toValue $ T.unlines $ map Lhx.getError es)
-                ! A.style "color: red;"
-                $ "⚠"
-          Right tpl -> do
-            sendTextData conn . R.renderHtml $
-              H.span ! A.id "template-errors" $ ""
-            liftIO $ atomicModifyIORef' ref \s ->
-              (s { sTemplate = tpl }, ())
-            updateOutput ref conn
+  info "Connected"
+  void $ handler `State.execStateT` initialState `Reader.runReaderT` conn
   where
-    updateOutput ref conn = do
-      State inp tpl <- readIORef ref
-      let ls = rights $ map (Lhx.apply tpl) inp
-      sendTextData conn . R.renderHtml $ output $ T.unlines ls
+    handler = forever do
+      getMessage >>= \case
+        Left msg -> info $ "Unhandled: " <> show msg
+        Right (NewInput inp) -> handleNewInput inp
+        Right (NewTemplate rawTpl) -> handleNewTemplate rawTpl
+    info :: MonadIO m => String -> m ()
+    info = liftIO . putStrLn . ("WS: " <>)
 
-initialState :: State
-initialState = State
-  { sInput = []
-  , sTemplate = []
+getMessage :: (MonadReader Connection m, MonadIO m) => m (Either DataMessage WsMessage)
+getMessage = do
+  conn <- Reader.ask
+  msg <- liftIO $ receiveDataMessage conn
+  case msg of
+    Text raw Nothing ->
+      case decode raw of
+        Nothing -> pure $ Left msg
+        Just x  -> pure $ Right x
+    _ -> pure $ Left msg
+
+handleNewInput :: WsMonad m => Text -> m ()
+handleNewInput inp = do
+  State.modify \s ->
+    s { wsInput =
+           map (Lhx.makeInput (Lhx.Separator ","))
+           (T.lines inp)
+      }
+  updateOutput
+
+handleNewTemplate :: WsMonad m => Text -> m ()
+handleNewTemplate rawTpl = do
+  case Lhx.makeTemplate rawTpl of
+    Left es ->
+      sendHtml
+        $ H.span
+        ! A.id "template-errors"
+        ! A.title (toValue $ Lhx.errorsToText es)
+        ! A.style "color: red;"
+        $ "⚠"
+    Right tpl -> do
+      sendHtml
+        $ H.span
+        ! A.id "template-errors"
+        $ ""
+      State.modify \s -> s { wsTemplate = tpl }
+      updateOutput
+
+updateOutput :: WsMonad m => m ()
+updateOutput = do
+  WsState inp tpl <- State.get
+  let ls = rights $ map (Lhx.apply tpl) inp
+  sendHtml $ output $ T.unlines ls
+
+sendHtml :: (MonadReader Connection m, MonadIO m) => Html -> m ()
+sendHtml el = do
+  conn <- Reader.ask
+  liftIO $ sendTextData conn . R.renderHtml $ el
+
+initialState :: WsState
+initialState = WsState
+  { wsInput = []
+  , wsTemplate = []
   }
 
 svgIconFile :: XStaticFile
