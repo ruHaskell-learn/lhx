@@ -37,14 +37,15 @@ common defaults
 
 common scotty-app
     import:          defaults
-    build-depends:  lhx
-                  , lhx-assets
-                  , lhx-browser
-                  , text
-                  , scotty
-                  , blaze-html
-                  , blaze-markup
-                  , xstatic
+    build-depends:
+        , lhx
+        , lhx-assets
+        , lhx-browser
+        , text
+        , scotty
+        , blaze-html
+        , blaze-markup
+        , xstatic
 
 library
     import:          defaults
@@ -67,6 +68,18 @@ library lhx-assets
         , bytestring
         , file-embed
 
+library lhx-streaming
+    import:          defaults
+    hs-source-dirs:  lib-streaming
+    exposed-modules:
+        Lhx.Streaming
+    build-depends:
+        , bytestring
+        , text
+        , mtl
+        , streaming
+        , streaming-bytestring
+
 library lhx-browser
     import:          defaults
     hs-source-dirs:  lib-browser
@@ -80,9 +93,10 @@ executable lhx
     import:         defaults
     hs-source-dirs: app
     main-is:        Main.hs
-    build-depends:  lhx
-                  , text
-                  , optparse-applicative
+    build-depends:
+        , lhx
+        , text
+        , optparse-applicative
 
 executable lhx-tui
     import:         defaults
@@ -90,25 +104,28 @@ executable lhx-tui
     main-is:        Main.hs
     ghc-options:    -threaded
     default-extensions:
-      TemplateHaskell
-    build-depends:  lhx
-                  , text
-                  , brick
-                  , vty
-                  , microlens
-                  , microlens-th
-                  , mtl
+        TemplateHaskell
+    build-depends:
+        , lhx
+        , lhx-streaming
+        , text
+        , brick
+        , vty
+        , microlens
+        , microlens-th
+        , mtl
 
 executable lhx-tpgui
     import:         defaults
     hs-source-dirs: app-tpgui
     main-is:        Main.hs
     ghc-options:    -threaded
-    build-depends:  lhx
-                  , lhx-assets
-                  , lhx-browser
-                  , text
-                  , threepenny-gui
+    build-depends:
+        , lhx
+        , lhx-assets
+        , lhx-browser
+        , text
+        , threepenny-gui
 
 executable lhx-web
     import:         scotty-app
@@ -122,12 +139,13 @@ executable lhx-webx
     hs-source-dirs: app-webx
     main-is:        Main.hs
     ghc-options:    -threaded
-    build-depends:  file-embed
-                  , wai
-                  , wai-websockets
-                  , websockets
-                  , aeson
-                  , mtl
+    build-depends:
+        , file-embed
+        , wai
+        , wai-websockets
+        , websockets
+        , aeson
+        , mtl
 
 test-suite lhx-test
     import:         defaults
@@ -135,9 +153,10 @@ test-suite lhx-test
     hs-source-dirs: test
     main-is:        Main.hs
     other-modules:  TestParser, TestTemplate
-    build-depends:  lhx
-                  , text
-                  , quickcheck-text
-                  , tasty
-                  , tasty-hunit
-                  , tasty-quickcheck
+    build-depends:
+       , lhx
+       , text
+       , quickcheck-text
+       , tasty
+       , tasty-hunit
+       , tasty-quickcheck

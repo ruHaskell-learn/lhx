@@ -16,6 +16,7 @@ import Lens.Micro.Extras (view)
 import Lens.Micro.TH
 
 import Lhx qualified
+import Lhx.Streaming qualified as LS
 
 data Name
   = Input
@@ -24,43 +25,55 @@ data Name
   deriving (Show, Eq, Ord, Enum, Bounded)
 
 data State = State
-  { _sInput          :: [Text]
+  { _sInput          :: [Lhx.Input]
   , _sTemplateEditor :: Editor Text Name
   , _sTemplate       :: Either [Lhx.Error] Lhx.Template
   , _sOutput         :: [Text]
   , _sFocused        :: Name
+  , _sFinalTemplate  :: Maybe Lhx.Template
   }
 
 $(makeLenses 'State)
 
 main :: IO ()
-main = void $ defaultMain @Name App
+main =
+  LS.run (LS.defaultApp @IO)
+    { LS.aPrepare = pure . Lhx.makeInput (Lhx.Separator ",")
+    , LS.aMakeTransformer = makeInteractively
+    } LS.stdin
+  >>= LS.stdout
+
+makeInteractively :: [Lhx.Input] -> IO (Maybe (Lhx.Input -> Maybe Text))
+makeInteractively preview = do
+  s <- defaultMain app
+    $ defaultState & sInput .~ preview
+  pure $ s ^? sFinalTemplate . _Just . to safeApply
+  where
+    safeApply t i = Lhx.apply t i ^? _Right
+
+app :: App State () Name
+app = App
   { appDraw = draw
-  , appChooseCursor = \s -> showCursorNamed $ s ^. sFocused
+  , appChooseCursor = showCursorNamed . (^. sFocused)
   , appHandleEvent = handle
   , appStartEvent = initMouse
-  , appAttrMap = \_ ->
-    attrMap VA.defAttr
-    [ (editAttr, VA.defAttr)
-    , (parsingError, VA.withForeColor VA.defAttr VA.red)
-    ]
-  } State
-  { _sInput =
-       [ "Bob Smith, 1980"
-       , "Ann Thompson, 1970"
-       , "John Doe"
-       , "Jane Air, 1920, 2000"
-       , "foobar"
-       , "foobar"
-       , "foobar"
-       , "foobar"
-       , "foobar"
-       , "foobar"
-       ]
+  , appAttrMap = const defaultAttrMap
+  }
+
+defaultAttrMap :: AttrMap
+defaultAttrMap = attrMap VA.defAttr
+  [ (editAttr, VA.defAttr)
+  , (parsingError, VA.withForeColor VA.defAttr VA.red)
+  ]
+
+defaultState :: State
+defaultState = State
+  { _sInput = []
   , _sTemplateEditor = editorText Template Nothing ""
   , _sTemplate = Right []
   , _sOutput = []
   , _sFocused = Template
+  , _sFinalTemplate = Nothing
   }
 
 draw :: State -> [Widget Name]
@@ -72,7 +85,7 @@ draw s = [layout]
       clickable Input
       . vLimitPercent 30
       . textArea (focus == Input) Input
-      $ s ^. sInput
+      $ s ^.. sInput . traversed . to Lhx.iRaw
     tpl =
       clickable Template
       . vLimit (min 5 $ length . getEditContents $ s ^. sTemplateEditor)
@@ -98,6 +111,12 @@ initMouse = do
 handle :: BrickEvent Name () -> EventM Name State ()
 handle evt =
   case evt of
+    VtyEvent (EvKey (KFun 5) []) -> do
+      gets (view sTemplate) >>= \case
+        Left _  -> pure ()
+        Right t -> do
+          modify $ sFinalTemplate ?~ t
+          halt
     VtyEvent (EvKey KEsc []) -> halt
     VtyEvent (EvKey (KChar 'c') [MCtrl]) -> halt
     VtyEvent (EvKey KBackTab []) ->
@@ -131,7 +150,6 @@ updateOutput =
     Right tpl -> do
       is <- gets $ view sInput
       let os = is ^.. traversed
-               . to (Lhx.makeInput (Lhx.Separator ","))
                . to (Lhx.apply tpl)
                . _Right
       modify $ sOutput .~ os
