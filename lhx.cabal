@@ -53,6 +53,7 @@ library
     exposed-modules:
         Lhx
         Lhx.Parser
+        Lhx.Runner
 
     build-depends:
         , megaparsec
@@ -124,6 +125,7 @@ executable lhx-tpgui
         , lhx
         , lhx-assets
         , lhx-browser
+        , lhx-streaming
         , text
         , threepenny-gui
 

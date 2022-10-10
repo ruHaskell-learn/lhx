@@ -16,7 +16,7 @@ import Lens.Micro.Extras (view)
 import Lens.Micro.TH
 
 import Lhx qualified
-import Lhx.Streaming qualified as LS
+import Lhx.Streaming qualified as S
 
 data Name
   = Input
@@ -37,11 +37,10 @@ $(makeLenses 'State)
 
 main :: IO ()
 main =
-  LS.run (LS.defaultApp @IO)
-    { LS.aPrepare = pure . Lhx.makeInput (Lhx.Separator ",")
-    , LS.aMakeTransformer = makeInteractively
-    } LS.stdin
-  >>= LS.stdout
+  S.interact (S.defaultApp @IO)
+    { S.aPrepare = pure . Lhx.makeInput (Lhx.Separator ",")
+    , S.aMakeTransformer = makeInteractively
+    }
 
 makeInteractively :: [Lhx.Input] -> IO (Maybe (Lhx.Input -> Maybe Text))
 makeInteractively preview = do
