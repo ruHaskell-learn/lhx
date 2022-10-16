@@ -24,3 +24,25 @@ mv one 2022-10-04_one
 mv three 2022-10-04_three
 mv two 2022-10-04_two
 ```
+
+### Nix
+
+#### Enter build environment (with all the dependencies and Cabal):
+
+```sh
+nix develop
+```
+
+#### Run one-liner
+
+```sh
+nix run .#<fully qualified Cabal component name>
+```
+
+Example: `nix run .#lhx:exe:lhx-tui`
+
+#### Run without cloning
+
+```sh
+nix run github:ruHaskell-learn/lhx#lhx:exe:lhx-tui
+```
