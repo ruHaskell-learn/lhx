@@ -26,7 +26,7 @@ data Name
 data State = State
   { _sInput          :: [Text]
   , _sTemplateEditor :: Editor Text Name
-  , _sTemplate       :: Either [Lhx.Error] Lhx.Template
+  , _sTemplate       :: Either Lhx.Error Lhx.Template
   , _sOutput         :: [Text]
   , _sFocused        :: Name
   }

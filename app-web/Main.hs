@@ -48,7 +48,7 @@ app = do
     oldOutput <- param "output"
     let (fsOutput, fsTemplateError) =
           case Lhx.makeTemplate fsTemplate of
-            Left es -> (oldOutput, Just $ Lhx.errorsToText es)
+            Left es -> (oldOutput, Just $ Lhx.errorText es)
             Right t ->
               let ls = webLines fsInput
                   input = map (Lhx.makeInput (Lhx.Separator ",")) ls

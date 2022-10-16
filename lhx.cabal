@@ -58,6 +58,7 @@ library
         , text
         , mtl
         , containers
+        , validationt
 
 library lhx-assets
     import:          defaults
