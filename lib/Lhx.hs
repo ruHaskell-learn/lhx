@@ -52,15 +52,17 @@ apply tpl i =
 applyOpTo :: Input -> Op -> ValidationT Error (State Cache) Text
 applyOpTo _ (Put t) = pure t
 applyOpTo inp (Apply idx steps) = do
-  cache <- lift (gets $ Map.lookup idx) >>= \case
-    Nothing ->
-      let new = Map.empty
-      in new <$ lift (modify $ Map.insert idx new)
-    Just x -> pure x
-  liftEitherAsWarning "" $ runExceptT do
+  cache <- lift $ state \s -> case Map.lookup idx s of
+    Nothing -> let x = Map.empty in (x, Map.insert idx x s)
+    Just x -> (x, s)
+  res <- runExceptT do
     t <- liftEither $ at idx inp
-    (res, cache') <- runStateT (go t steps) cache
-    res <$ lift (modify $ Map.insert idx cache')
+    (t', cache') <- runStateT (go t steps) cache
+    lift . lift . modify $ Map.insert idx cache'
+    pure t'
+  case res of
+    Left e -> "" <$ vWarning e
+    Right x -> pure x
   where
     go t [] = pure t
     go t ((k, f) : fs) = do
@@ -72,11 +74,6 @@ applyOpTo inp (Apply idx steps) = do
           r <- liftEither $ f t'
           modify $ Map.insert k r
           pure r
-
-liftEitherAsWarning :: (Monad m, Monoid e) => a -> m (Either e a) -> ValidationT e m a
-liftEitherAsWarning def body = lift body >>= \case
-  Left e -> def <$ vWarning e
-  Right x -> pure x
 
 makeInput :: Separator -> Text -> Input
 makeInput (Separator sep) s = Input s (T.splitOn sep s)
