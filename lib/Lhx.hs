@@ -1,32 +1,67 @@
 module Lhx where
 
 import Control.Monad
+import Control.Monad.Identity
+import Control.Monad.Except
+import Control.Monad.State.Strict
 import Data.Either
-import Data.Function ((&))
 import Data.Bifunctor
+import Data.List (foldl')
+import Data.Map (Map)
+import Data.Map qualified as Map
 import Data.Text (Text)
 import Data.Text qualified as T
 
-import Lhx.Parser
+import Lhx.Parser hiding (Raw, Apply)
+import Lhx.Parser qualified as Parser
 
 newtype Error = Error { getError :: Text } deriving (Show, Eq)
+
 newtype Separator = Separator { unSeparator :: Text } deriving (Show)
 
 type Template = [Op]
-type Op = (Input -> Either Error Text)
+
+data Op
+  = Put Text
+  | Apply Int [(Key, Text -> Either Error Text)]
+
+newtype Key = Key { unKey :: [Text] } deriving (Eq, Ord, Show)
 
 data Input = Input
   { iRaw    :: !Text
   , iFields :: [Text]
   } deriving (Show, Eq)
 
+type Cache = Map Int (Map Key Text)
+
 apply :: Template -> Input -> Either [Error] Text
-apply tpl = repack . foldMap wrap . sequenceA tpl
+apply tpl i =
+  T.concat <$> traverseAllM (runExceptT . applyOpTo i) tpl `evalState` Map.empty
+
+applyOpTo
+  :: (MonadState Cache m, MonadError Error m)
+  => Input -> Op -> m Text
+applyOpTo _ (Put t) = pure t
+applyOpTo inp (Apply idx steps) = do
+  cache <- gets (Map.lookup idx) >>= \case
+    Nothing ->
+      let new = Map.empty
+      in new <$ modify (Map.insert idx new)
+    Just x -> pure x
+  t <- liftEither $ at idx inp
+  (res, cache') <- runStateT (go t steps) cache
+  res <$ modify (Map.insert idx cache')
   where
-    repack (t, []) = Right t
-    repack (_, es) = Left es
-    wrap (Right t) = (t, [])
-    wrap (Left  e) = ("", [e])
+    go t [] = pure t
+    go t ((k, f) : fs) = do
+      cache <- get
+      case Map.lookup k cache of
+        Just r -> pure r
+        Nothing -> do
+          t' <- go t fs
+          r <- liftEither $ f t'
+          modify $ Map.insert k r
+          pure r
 
 makeInput :: Separator -> Text -> Input
 makeInput (Separator sep) s = Input s (T.splitOn sep s)
@@ -45,23 +80,26 @@ lookupFunction n =
   $ lookup n functions
 
 buildTemplate :: [Chunk] -> Either [Error] Template
-buildTemplate = repack . foldMap wrap
+buildTemplate = bimap concat concat . traverseAll (fmap (:[]) . useChunk)
   where
-    repack (cs, []) = Right cs
-    repack (_,  es) = Left es
-    wrap (Raw t) = ok (Right . pure t)
-    wrap (Apply ix ns) =
-      either oops (ok . (\f i -> at ix i >>= f)) $
-      makeOp ns
-    ok   x = ([x], [])
-    oops x = ([], x)
+    useChunk :: Parser.Chunk -> Either [Error] Op
+    useChunk (Parser.Raw t) = Right (Put t)
+    useChunk (Parser.Apply idx ns) = do
+      fs <- traverseAll lookupFunction ns
+      pure $ Apply idx $ snd $ foldl' step ([], []) $ zip ns fs
+    step (p, rs) (FName n, f) =
+      let p' = n : p
+      in (p', (Key p', f) : rs)
 
-    makeOp :: [FName] -> Either [Error] (Text -> Either Error Text)
-    makeOp ns =
-      let fs = map lookupFunction ns
-      in case lefts fs of
-        [] -> Right $ foldM (&) `flip` rights fs
-        es -> Left es
+traverseAll :: (a -> Either b c) -> [a] -> Either [b] [c]
+traverseAll f = runIdentity . traverseAllM (pure . f)
+
+traverseAllM :: Monad m => (a -> m (Either b c)) -> [a] -> m (Either [b] [c])
+traverseAllM f xs = do
+  ys <- mapM f xs
+  pure $ case lefts ys of
+    [] -> Right $ rights ys
+    es -> Left es
 
 makeTemplate :: Text -> Either [Error] Template
 makeTemplate = buildTemplate <=< first wrap . parse
