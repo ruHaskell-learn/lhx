@@ -162,7 +162,7 @@ handleNewTemplate rawTpl = do
       sendHtml
         $ H.span
         ! A.id "template-errors"
-        ! A.title (toValue $ Lhx.errorsToText es)
+        ! A.title (toValue $ Lhx.errorText es)
         ! A.style "color: red;"
         $ "⚠"
     Right tpl -> do

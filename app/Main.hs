@@ -3,7 +3,6 @@ module Main where
 import System.IO
 import System.Exit
 import Control.Monad
-import Data.Coerce
 import Data.Text qualified as T
 import Data.Text.IO qualified as TIO
 import Options.Applicative
@@ -34,8 +33,8 @@ main = do
       Left es ->
         unless (skipErrors opts) $ dumpErrors es
 
-dumpErrors :: [Error] -> IO ()
-dumpErrors = mapM_ $ TIO.hPutStrLn stderr . coerce
+dumpErrors :: Error -> IO ()
+dumpErrors = TIO.hPutStrLn stderr . Lhx.errorText
 
 cli :: ParserInfo Options
 cli = info (options <**> helper)

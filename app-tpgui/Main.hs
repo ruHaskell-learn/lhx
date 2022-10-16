@@ -22,7 +22,7 @@ fakeInput =
   ]
 
 data State = State
-  { template   :: Either [Lhx.Error] Lhx.Template
+  { template   :: Either Lhx.Error Lhx.Template
   , input      :: [Lhx.Input]
   , inputEl    :: Element
   , templateEl :: Element
@@ -100,8 +100,8 @@ changeTemplate ref val = do
     pureModifyState ref \s -> s
       { template = Lhx.makeTemplate $ T.pack val }
   case t of
-    Left es  ->
-      let ttl = unlines [T.unpack e | Lhx.Error e <- es]
+    Left e  ->
+      let ttl = T.unpack $ Lhx.errorText e
       in pure tpl
         # set UI.style [("color", "red")]
         # set UI.title__ ttl

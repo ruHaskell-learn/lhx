@@ -1,6 +1,7 @@
 module TestTemplate (tests) where
 
-import Data.Either (isLeft, isRight)
+import Data.Bifunctor (first)
+import Data.Either (isLeft, isRight, fromRight)
 import Data.Text qualified as T
 import Data.Text.Arbitrary ()
 import Test.Tasty (TestTree, testGroup)
@@ -8,7 +9,7 @@ import Test.Tasty.HUnit (testCase, (@?), (@?=))
 import Test.Tasty.QuickCheck qualified as QC
 
 import Lhx (Separator(..))
-import Lhx qualified as Lhx
+import Lhx qualified
 import Lhx.Parser qualified as LP
 
 templateMakingTests :: TestTree
@@ -26,11 +27,11 @@ templateMakingTests =
         , testCase "Several unknown functions" $
             case Lhx.makeTemplate "$foo:bar:rev:baz:rev:bazzz:rev;" of
               Right _ -> error "impossible"
-              Left es -> es @?=
-                [ Lhx.Error "Unknown function: foo"
-                , Lhx.Error "Unknown function: bar"
-                , Lhx.Error "Unknown function: baz"
-                , Lhx.Error "Unknown function: bazzz"
+              Left e  -> Lhx.errorText e @?= T.unlines
+                [ "Unknown function: foo"
+                , "Unknown function: bar"
+                , "Unknown function: baz"
+                , "Unknown function: bazzz"
                 ]
         ]
     , testGroup
@@ -58,7 +59,7 @@ functionPropertyTests =
   testGroup
     "Function properties"
     [ QC.testProperty "'rev' function" \s ->
-        either (const False) id do
+        fromRight False do
           template <- Lhx.makeTemplate "$rev;"
           result <- Lhx.apply template (Lhx.makeInput (Separator ",") s)
           pure $ result == T.reverse s
@@ -75,20 +76,20 @@ indexingTests =
     , testCase "Functions should work well with indices" $
         "$2:rev:rev;,$1:rev;" `appliedTo` "abc,de" @?= Right "de,cba"
     , testCase "Index out of range" $
-        "$20" `appliedTo` "a,b,c" @?= Left [Lhx.Error "Index is out of range: 20"]
+        "$20" `appliedTo` "a,b,c" @?= Left "Index is out of range: 20\n"
     , testCase "Negate index -1" $
         "$-1" `appliedTo` "a,b,c,d,e,f" @?= Right "f"
     , testCase "Negate index -3" $
         "$-3" `appliedTo` "a,b,c,d,e,f" @?= Right "d"
     , testCase "Negate index out of range" $
-        "$-3" `appliedTo` "a,b" @?= Left [Lhx.Error "Index is out of range: -3"]
+        "$-3" `appliedTo` "a,b" @?= Left "Index is out of range: -3\n"
     , testCase "To apply the function on the negate index" $
         "$-3:rev;" `appliedTo` "a,b,c,abcd,e,f" @?= Right "dcba"
     ]
  where
-  appliedTo templateT inputString = do
+  appliedTo templateT inputString = first Lhx.errorText do
     template <- Lhx.makeTemplate templateT
-    Lhx.apply template $ Lhx.makeInput (Separator ",") inputString
+    Lhx.apply template (Lhx.makeInput (Separator ",") inputString)
 
 tests :: TestTree
 tests =
